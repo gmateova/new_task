@@ -1,0 +1,460 @@
+
+RedHat OpenShift Container Platform 
+
+Number: 
+
+Local Document 
+
+Status: 
+
+​​Draft​ 
+
+Owner: 
+
+Naga Krishna Sai Baruri 
+
+Effective: 
+
+​​12. Feb 2026​ 
+
+Doc.- type: 
+
+​​Design​ 
+
+Revision 
+
+​​1.0​ 
+
+Comments: 
+
+ 
+
+[Authorized by: 
+
+(Optional, delete if not required)] 
+
+[Name] 
+
+[Name] 
+
+[Name] 
+
+IT-MIO-INFRASTRUCTURE ENGINEERING 
+
+[Department] 
+
+[Department] 
+
+[Department] 
+
+ 
+
+ 
+
+​​Table of Contents​ 
+
+ 
+
+1	Purpose	1 
+
+2	Scope	1 
+
+3	Summary	1 
+
+4	Reference Architecture	2 
+
+5	Infrastructure Requirements	2 
+
+6	Networking Requirements	2 
+
+7	Storage Requirements	2 
+
+8	Security and Compliance Requirements	2 
+
+9	Multi-Tenancy and Namespace classes Requirements	3 
+
+10	Observability and Day-2 Ops Requirements	3 
+
+11	Backup and DR Requirements	3 
+
+12	Governance and Platform Operations Requirements	3 
+
+13	Non Fucntional Requirements	3 
+
+14	Contacts	5 
+
+15	Definition / Terms and Abbreviations	5 
+
+16	Employee Roles and Responsibilities	5 
+
+17	Related Documents / References	5 
+
+18	History	5 
+
+ 
+
+Purpose 
+
+ 
+
+The document defines what the OpenShift container platform must achieve—its intended capabilities, operational model, and non-functional expectations.It aligns architects, platform engineers, security teams, and application teams on one common understanding of the platform’s goals. 
+
+Scope 
+
+The scope of this document is limited to the IT-MIO-INFRASTRUCTURE ENGINEERING. 
+
+Summary 
+
+This document defines the technical and operational requirements to deploy and operate Red Hat OpenShift for containerized workloads using the OpenShift Kubernetes Engine (OKE) subscription. It focuses on core Kubernetes platform capabilities. The target outcome is a secure, multi‑tenant, production‑ready platform aligned to enterprise standards.
+ 
+ 
+
+Reference Architecture 
+
+ 
+
+Minimum nodes: 1 Bootstrap (temporary), 3 Control Plane, ≥2 Workers for HA. 
+
+ 
+
+Etcd on control plane with fast storage. 
+
+ 
+
+Ingress via OpenShift Router (HA) behind enterprise/load balancer; internal registry mirrored to enterprise  registry (e.g., Nexus or Jfrog). 
+
+ 
+
+Network CNI: OVN‑Kubernetes; enable per‑namespace NetworkPolicy (default‑deny + explicit allows). 
+
+ 
+
+Storage via CSI drivers (e.g., vendor‑supported block/file); snapshots require a CSI driver that supports VolumeSnapshot API. 
+
+Infrastructure Requirements 
+
+ 
+
+Minimum machine sizing (baseline): 
+
+ 
+
+Bootstrap: 4 vCPU, 16 GiB RAM, 100 GiB disk (temporary/Optional). 
+
+ 
+
+Control plane (x3): 2 Sockets with 32 Core processor, 128 GB RAM, Internal disk of 400-500 GB and 6*25Gi NIC ports. 
+
+ 
+
+Workers (≥2): 2 Sockets with 32 Core processor, 1 TB RAM, Internal disk of 400-500 GB and 6*25Gi NIC ports. 
+
+ 
+
+Networking Requirements 
+
+ 
+
+Use OVN‑Kubernetes with default clusterNetwork and serviceNetwork CIDRs. 
+
+ 
+
+Enforce default‑deny NetworkPolicy per namespace (Ingress and Egress) with explicit allows for DNS, egress to external services, and inter‑namespace calls as required. 
+
+ 
+
+Segment platform components from workloads using namespaces and labels; restrict egress using EgressNetworkPolicy or egress firewall where applicable. 
+
+ 
+
+Expose routes via OpenShift Route using ingress controllers; prefer TLS 1.2+ with modern ciphers. 
+
+ 
+
+Storage Requirements 
+
+Adopt CSI drivers supported on OpenShift 4.x with dynamic provisioning. 
+
+ 
+
+Define StorageClasses per performance tier (gold/silver/bronze) with accessModes and reclaimPolicy. 
+
+ 
+
+If backups via CSI VolumeSnapshots are required, ensure the selected CSI driver supports the snapshot API and a compatible VolumeSnapshotClass is present 
+
+ 
+
+Plan registry and logging storage with appropriate retention and IOPS. 
+
+Security and Compliance Requirements 
+
+Identity: Configure OAuth providers (LDAP/AD/OIDC) with least‑privilege RBAC. 
+
+ 
+
+Pod Security: Adopt Pod Security Admission (restricted/baseline) with exceptions via SCC where needed for legacy workloads. 
+
+ 
+
+Network Zero Trust: Default‑deny policies, namespace isolation, allow‑lists for core services (DNS, metrics, ingress). 
+
+ 
+
+Image security: Use signed images, mirror to enterprise registry; enable policy to block untrusted registries. 
+
+ 
+
+Audit: Enable audit log retention and forward to SIEM as per policy. 
+
+ 
+
+Integrate CrowdStrike antivirus. 
+
+Multi-Tenancy and Namespace classes Requirements 
+
+ 
+
+Define namespace classes and quotas: 
+
+ 
+
+Apply ResourceQuota and LimitRange per namespace; restrict privileged SCC usage. 
+
+ 
+
+Group dev/test/prod into projects with separate network policies and RBAC boundaries. 
+
+Observability and Day-2 Ops Requirements 
+
+Use built‑in cluster monitoring for platform metrics; integrate with external monitoring for app metrics where needed. 
+
+ 
+
+Central logging via loki. 
+
+ 
+
+Alerting rules for etcd health, API latency, node pressure, router saturation, upgrade failures. 
+
+ 
+
+Automation for repeatable deployments. 
+
+Backup and DR Requirements 
+
+ 
+
+Back up etcd regularly (control plane). 
+
+ 
+
+For applications, prefer CSI snapshots when supported by the storage backend; otherwise use app‑aware backup tools that integrate via Kubernetes APIs. 
+
+ 
+
+Document restore procedures: same‑cluster namespace restore and cross‑cluster migration patterns. 
+
+Governance and Platform Operations Requirements 
+
+ 
+
+Change management via GitOps PR workflows; tag releases and maintain environment overlays. 
+
+ 
+
+Maintenance windows for OTA upgrades; pre‑prod canary cluster for validation. 
+
+ 
+
+Capacity management: node autoscaling (where supported) and quota enforcement. 
+
+Non Fucntional Requirements 
+
+ 
+
+Availability & Reliability 
+
+The OpenShift control plane (API, etcd, core operators) must maintain ≥ 99.9% availability monthly. 
+
+The platform must tolerate singlenode failure without loss of controlplane quorum. 
+
+Ingress routing must be deployed in HA mode, ensuring no single point of failure. 
+
+etcd must run on dedicated, lowlatency NVMe/SSD. 
+
+Cluster Operators must continuously report Healthy/Available; any degradation triggers automated alerting. 
+
+ 
+
+Performance 
+
+Kubernetes API must respond within < 1s under normal load. 
+
+Ingress throughput and latency must support app SLOs. 
+
+Worker nodes must operate below 70% sustained CPU and 75% memory usage to allow burst capacity. 
+
+Pods must be scheduled within < 5 seconds average under normal conditions. 
+
+Persistent storage must meet defined StorageClass performance tiers (Gold/Silver/Bronze). 
+
+ 
+
+ Scalability 
+
+Platform must support horizontal node scaling (workers added/removed with zero downtime). 
+
+Must support workload autoscaling (HPA/VPA) where applicable. 
+
+Control plane must support the enterprise’s maximum anticipated:  
+
+Number of nodes 
+
+Pods per Namespace 
+
+ 
+
+Observability 
+
+The platform must provide metrics, logs, and alerts for cluster health, nodes, workloads, and network. 
+
+Application and platform logs must be centrally aggregated (e.g., Loki) with:  
+
+30 days locally 
+
+180 days remote (if compliance requires) 
+
+Alerts must be integrated with enterprise notification systems. 
+
+All alerts must be actionable, severitycategorized, and follow runbooks. 
+
+ 
+
+The platform must support zero downtime rolling upgrades. 
+
+ 
+
+The cluster must integrate with  
+
+Enterprise Identity providers 
+
+Enterprise registries(Nexus/Jfrog) 
+
+LBs,Firewall,DNS,Storage arrays 
+
+ 
+
+Cost and Capacity governance must be inplace.  
+
+Even after Overprovisioning the cluster must have 30% buffer. 
+
+Cost per namespace should be in place. 
+
+ 
+
+Checklists and Runbooks 
+
+ 
+
+A full Go Live Readiness Checklist must be completed before production use. 
+
+Runbooks for below should be available 
+
+     
+
+Node failures 
+
+Operator degradation 
+
+Registry outages 
+
+Ingress failures 
+
+DR/restore 
+
+Contacts 
+
+[Insert statement regarding whom to contact if any issues or questions surrounding the subject matter of the document.] 
+
+ 
+
+Definition / Terms and Abbreviations 
+
+Term 
+
+Definition 
+
+[Document Control System] 
+
+[IT System to manage documents] 
+
+[DN] 
+
+[Diebold Nixdorf] 
+
+ 
+
+ 
+
+ 
+
+Employee Roles and Responsibilities 
+
+Role 
+
+Responsibility 
+
+[Quality Management] 
+
+[Controls and reviews the level of quality.] 
+
+ 
+
+ 
+
+ 
+
+Related Documents / References 
+
+Title 
+
+Number 
+
+ 
+
+ 
+
+ 
+
+ 
+
+ 
+
+History 
+
+Revision 
+
+Date 
+
+Comment 
+
+By 
+
+[0.1] 
+
+12-02-2026 
+
+[First draft version] 
+
+Naga Krishna Sai Baruri 
+
+ 
+
+ 
+
+ 
+
+ 
+
+ 
